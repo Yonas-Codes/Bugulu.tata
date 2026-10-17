@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Only allow bids if the amount is greater than 0
+    match /bids/{bidId} {
+      allow read: if true;
+      allow create: if request.resource.data.amount > 0 
+                    && request.resource.data.amount is number;
+      // Nobody can update or delete bids once placed (prevents tampering)
+      allow update, delete: if false; 
+    }
+
+    // 2. Lock down user profiles and wallet balances so users can't hack their own credits
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if false; // Only admin backend can alter wallet balances
+    }
+
+    // 3. Lock down payments so transaction IDs can't be modified or reused
+    match /payments/{txId} {
+      allow read: if true;
+      allow create: if request.resource.data.status == "PENDING";
+      allow update, delete: if false;
+    }
+  }
+}
